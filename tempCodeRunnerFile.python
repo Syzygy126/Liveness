@@ -1,0 +1,70 @@
+import cv2
+import numpy as np
+
+# 加载YOLO模型
+net = cv2.dnn.readNet('yolov3.weights', 'yolov3.cfg')  # 替换为您下载的权重和配置文件
+classes = []
+
+with open('coco.names', 'r') as f:  # 替换为您下载的类别名称文件
+    classes = f.read().strip().split('\n')
+
+layer_names = net.getUnconnectedOutLayersNames()
+
+# 打开摄像头或视频文件
+cap = cv2.VideoCapture('your_video_file.mp4')  # 或者使用摄像头: 0
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    height, width, _ = frame.shape
+
+    # 将图像传递给网络
+    blob = cv2.dnn.blobFromImage(frame, 0.00392, (416, 416), (0, 0, 0), True, crop=False)
+    net.setInput(blob)
+    outs = net.forward(layer_names)
+
+    # 解析输出并绘制边界框
+    class_ids = []
+    confidences = []
+    boxes = []
+
+    for out in outs:
+        for detection in out:
+            scores = detection[5:]
+            class_id = np.argmax(scores)
+            confidence = scores[class_id]
+
+            if confidence > 0.5 and class_id == 0:  # 仅检测人
+                center_x = int(detection[0] * width)
+                center_y = int(detection[1] * height)
+                w = int(detection[2] * width)
+                h = int(detection[3] * height)
+
+                x = int(center_x - w / 2)
+                y = int(center_y - h / 2)
+
+                class_ids.append(class_id)
+                confidences.append(float(confidence))
+                boxes.append([x, y, w, h])
+
+    indexes = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
+
+    for i in range(len(boxes)):
+        if i in indexes:
+            x, y, w, h = boxes[i]
+
+            # 在这里添加距离计算的代码，基于物体的宽度、焦距等信息
+
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+    # 显示结果
+    cv2.imshow('YOLO Distance Detection', frame)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# 释放资源
+cap.release()
+cv2.destroyAllWindows()
