@@ -3,7 +3,7 @@ import numpy as np
 from face_tools import Face_Helper
 
 # Load the liveness detection model
-liveness_net = cv2.dnn.readNetFromONNX("liveness_detection_model/model_1E.onnx")
+liveness_net = cv2.dnn.readNetFromONNX("liveness_detection_model/model_1D2.onnx")
 
 def preprocess_face(face_image, target_size=(224, 224)):
     # Resize and normalize the face image
@@ -27,7 +27,7 @@ def get_score_label(real_score):
     return f"Real Score: {real_score:.2f}"
 
     
-stream_src = "User03_slow_speed.mp4"
+stream_src = "/Users/syzygy/Documents/Liveness Detection/Test_Videos/Normal_Speed/User01_0.5to1m.mp4"
 stream = cv2.VideoCapture(stream_src)
 image_width = int(stream.get(cv2.CAP_PROP_FRAME_WIDTH))
 image_height = int(stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -81,7 +81,6 @@ while stream.isOpened():
                 real_count += 1
             else:
                 fake_count += 1
-    print(type(img_ori))
     #out.write(img_ori)
     cv2.imshow(win_name, img_ori)
     if cv2.waitKey(1) & 0xFF == ord('q'):
