@@ -89,10 +89,8 @@ class Face_Helper:
     def find_largest_face(self,faces):
         '''
         From all faces, find the one with the largest area
-
         return face
         '''
-
         max_index = np.argmax([face[2] * face[3] for face in faces])
         return faces[max_index]
     
@@ -121,6 +119,17 @@ class Face_Helper:
                 cv2.putText(image, info_txt, (coords[0], coords[1] - 10), 
                             cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0,0,255), thickness)
                 
+
+        return image
+    
+    
+    def draw_largest_face(self, image, detect_results, threshold=0.5, info_txt=None, draw_point=False):
+        largest_face = self.find_largest_face(detect_results)
+
+        if largest_face is not None:
+            score = largest_face[-1]
+            if score > threshold:
+                image = self.draw_one_face(image, largest_face, score, info_txt, draw_point)
 
         return image
 

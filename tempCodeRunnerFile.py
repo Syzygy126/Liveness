@@ -1,1 +1,2 @@
-IMG_0824.HEIC
+
+    input_size = (640, 360)  

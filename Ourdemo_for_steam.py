@@ -4,7 +4,7 @@ from face_tools import Face_Helper
 from datetime import datetime
 
 # Load the liveness detection model
-liveness_net = cv2.dnn.readNetFromONNX("liveness_detection_model/model_1E2.onnx")
+liveness_net = cv2.dnn.readNetFromONNX("model_test/liveness_detection_model/model_1E2.onnx")
 
 def preprocess_face(face_image, target_size=(224, 224)):
     # Resize and normalize the face image
@@ -35,13 +35,13 @@ total_frame_count = stream.get(cv2.CAP_PROP_FRAME_COUNT)
 
 image_size = (image_width, image_height)
 input_size = (640, 360)  
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-output_filename = f'output_{datetime.now().strftime("%Y%m%d_%H%M%S")}.mp4'
-out = cv2.VideoWriter(output_filename, fourcc, 20.0, image_size)
+#fourcc = cv2.VideoWriter_fourcc(*'XVID')
+#output_filename = f'output_{datetime.now().strftime("%Y%m%d_%H%M%S")}.mp4'
+#out = cv2.VideoWriter(output_filename, fourcc, 20.0, image_size)
 
 fh = Face_Helper(image_size=image_size, input_size=input_size, 
                      detect_threshold=0.75,
-                     detect_weight_path="yunet.onnx")
+                     detect_weight_path="model_test/yunet.onnx")
 
 
 win_name = "demo"
@@ -72,15 +72,15 @@ while stream.isOpened():
             score_label = get_score_label(real_score)
 
             info_txt = f"Face {index}: {face_label}, {score_label}"
-            img_ori = fh.draw_one_face(img_ori, face_ori, real_score, info_txt)
-            print(f"face_label{face_label}, {score_label}")
+            img_ori = fh.draw_largest_face(img_ori, face_ori, real_score, info_txt)
+            #print(f"face_label{face_label}, {score_label}")
             
     
     cv2.imshow(win_name, img_ori)
-    out.write(img_ori)
+    #out.write(img_ori)
     if cv2.waitKey(1) & 0xFF == ord('q'): 
         break
 
 stream.release()
-out.release()
+#out.release()
 cv2.destroyAllWindows()
