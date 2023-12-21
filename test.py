@@ -5,7 +5,7 @@ from face_tools import Face_Helper
 import os
 import dataframe_image as dfi
 
-model = "1D3"
+model = "1D4"
 # Load the liveness detection model
 liveness_net = cv2.dnn.readNetFromONNX(f"model_test/liveness_detection_model/model_{model}.onnx")
 
@@ -35,7 +35,7 @@ total_fake_count = []
 
 
 
-path = f"Drive Data Export Dec 12/1to1.5m/F_G_2MP.mp4_1to1.5m.mp4"
+path = f"Drive Data Export 2/F_G_100_Z_5MP.mp4"
 stream = cv2.VideoCapture(path)
 image_width = int(stream.get(cv2.CAP_PROP_FRAME_WIDTH))
 image_height = int(stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -50,8 +50,8 @@ fh = Face_Helper(image_size=image_size, input_size=input_size,
                     detect_threshold=0.75,
                     detect_weight_path="model_test/yunet.onnx")
 
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-out = cv2.VideoWriter(f'Drive Data Export Dec 12/largest_test.mp4', fourcc, 20.0, (image_width, image_height))
+#fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+#out = cv2.VideoWriter(f'Drive Data Export Dec 12/largest_test.mp4', fourcc, 20.0, (image_width, image_height))
 
 
 
@@ -64,14 +64,16 @@ while stream.isOpened():
         break
 
     img_input = fh.img_processing(img_ori.copy())
-    faces = fh.detect(img_input)[1]
+    confidence, faces = fh.detect(img_input)
+    print(confidence)
+    
     if faces is not None:
-        
         face = fh.find_largest_face(faces)
         face_ori = fh.rescale2ori(face)
         (x, y, w, h) = [int(v) for v in face_ori[:4]]
         face_roi = img_ori[y:y+h, x:x+w]
-        
+        if face_roi.size == 0:
+            break
         preprocessed_face = preprocess_face(face_roi)
         preds = detect_liveness(preprocessed_face)
         
@@ -87,13 +89,13 @@ while stream.isOpened():
             real_count += 1
         else:
             fake_count += 1
-    out.write(img_ori)
+    #out.write(img_ori)
     cv2.imshow(win_name, img_ori)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 print(real_count, fake_count)
 stream.release()
-out.release()
+#out.release()
 cv2.destroyAllWindows()
 total_real_count.append(real_count)
 total_fake_count.append(fake_count)

@@ -5,9 +5,9 @@ from face_tools import Face_Helper
 from tabulate import tabulate
 import dataframe_image as dfi
 import os
-model = "1D2"
+model = "1D4"
 # Load the liveness detection model
-liveness_net = cv2.dnn.readNetFromONNX(f"/Users/syzygy/Documents/Liveness Detection/model_test/liveness_detection_model/model_{model}.onnx")
+liveness_net = cv2.dnn.readNetFromONNX(f"model_test/liveness_detection_model/model_{model}.onnx")
 
 def preprocess_face(face_image, target_size=(224, 224)):
     # Resize and normalize the face image
@@ -32,11 +32,12 @@ def get_score_label(real_score):
 
 total_real_count = []
 total_fake_count = []
-intervel = "2.5to3m"
+intervel = "3to3.5m"
 
-files = [f for f in os.listdir(f'Drive Data Export Dec 12/{intervel}') if f.endswith('.mp4')]
+files = [f for f in os.listdir(f'Test_Videos/Slow_Speed/{intervel}') if f.endswith('.mp4')]
+print(files)
 for i in files:
-    stream = cv2.VideoCapture(f'Drive Data Export Dec 12/{intervel}/{i}')
+    stream = cv2.VideoCapture(f'Test_Videos/Slow_Speed/{intervel}/{i}')
     image_width = int(stream.get(cv2.CAP_PROP_FRAME_WIDTH))
     image_height = int(stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
     total_frame_count = stream.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -49,7 +50,7 @@ for i in files:
     fake_count = 0
     fh = Face_Helper(image_size=image_size, input_size=input_size, 
                         detect_threshold=0.75,
-                        detect_weight_path="/Users/syzygy/Documents/Liveness Detection/model_test/yunet.onnx")
+                        detect_weight_path="model_test/yunet.onnx")
 
     #fourcc = cv2.VideoWriter_fourcc(*'XVID')
     #out = cv2.VideoWriter(f'/Users/syzygy/Documents/Liveness Detection/Test_Videos/Slow_Speed/{intervel}/output.mp4', fourcc, 20.0, (image_width, image_height))
@@ -64,31 +65,29 @@ for i in files:
 
         img_input = fh.img_processing(img_ori.copy())
         faces = fh.detect(img_input)[1]
-
+        
         if faces is not None:
-            for index, face in enumerate(faces):
-                face_ori = fh.rescale2ori(face)
-                (x, y, w, h) = [int(v) for v in face_ori[:4]]
-                face_roi = img_ori[y:y+h, x:x+w]
-
-                if face_roi.size == 0:
-                    continue
-
-                preprocessed_face = preprocess_face(face_roi)
-                preds = detect_liveness(preprocessed_face)
-                real_score = preds[0][0]  
-
-                face_label = classify_face(real_score, threshold=0.5)
-                score_label = get_score_label(real_score)
-
-                info_txt = f"Face {index}: {face_label}, {score_label}"
-                img_ori = fh.draw_one_face(img_ori, face_ori, real_score,info_txt)
+            face = fh.find_largest_face(faces)
+            face_ori = fh.rescale2ori(face)
+            (x, y, w, h) = [int(v) for v in face_ori[:4]]
+            face_roi = img_ori[y:y+h, x:x+w]
+            
+            preprocessed_face = preprocess_face(face_roi)
+            preds = detect_liveness(preprocessed_face)
+            
+            real_score = preds[0][0]
+            
+            face_label = classify_face(real_score, threshold=0.5)
+            score_label = get_score_label(real_score)
+            
+            info_txt = f"{face_label}, {score_label}"
+            img_ori = fh.draw_one_face(img_ori, face_ori, real_score,info_txt)
                 
-                if face_label == "Real":
-                    real_count += 1
-                else:
-                    fake_count += 1
-        #out.write(img_ori)
+            if face_label == "Real":
+                real_count += 1
+            else:
+                fake_count += 1
+    #out.write(img_ori)
         cv2.imshow(win_name, img_ori)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -108,5 +107,5 @@ df = pd.DataFrame(dict)
 
 df_styled = df.style.background_gradient()
 df_styled.set_caption(f"{model}, {intervel}")
-#table = tabulate(df_styled, headers="keys", tablefmt="pretty")
-dfi.export(df_styled, f'Drive Data Export Dec 12/{intervel}/{model}_{intervel}_output.png')
+print(tabulate(df, headers="keys", tablefmt="pretty"))
+#dfi.export(df_styled, f'Test_Videos/Slow_Speed/{intervel}/{model}_{intervel}_output.png')

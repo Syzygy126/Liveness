@@ -5,7 +5,7 @@ from face_tools import Face_Helper
 import os
 import dataframe_image as dfi
 
-model = "1D3"
+model = "1D4"
 # Load the liveness detection model
 liveness_net = cv2.dnn.readNetFromONNX(f"model_test/liveness_detection_model/model_{model}.onnx")
 
@@ -32,26 +32,25 @@ def get_score_label(real_score):
 
 total_real_count = []
 total_fake_count = []
-files = [f for f in os.listdir("Drive Data Export Dec 12") if f.endswith('.mp4')]
-
+files = [f for f in os.listdir("Drive Data Export") if f.endswith('.mp4')]
 for i in range(len(files)):
-    path = f"Drive Data Export Dec 12/{files[i]}"
+    path = f"Drive Data Export/{files[i]}"
     stream = cv2.VideoCapture(path)
     image_width = int(stream.get(cv2.CAP_PROP_FRAME_WIDTH))
     image_height = int(stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = int(stream.get(cv2.CAP_PROP_FPS))
     total_frame_count = stream.get(cv2.CAP_PROP_FRAME_COUNT)
 
     image_size = (image_width, image_height)
     input_size = (640, 360)  
-    input_size_reverse = (360, 640)
     real_count = 0
     fake_count = 0
     fh = Face_Helper(image_size=image_size, input_size=input_size, 
                         detect_threshold=0.75,
                         detect_weight_path="model_test/yunet.onnx")
     
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(f'Drive Data Export Dec 12/Real.mp4', fourcc, 20.0, (image_width, image_height))
+    #fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    #out = cv2.VideoWriter(f'Drive Data Export Dec 12/Real.mp4', fourcc, fps, (image_width, image_height))
 
 
 
@@ -67,45 +66,44 @@ for i in range(len(files)):
         faces = fh.detect(img_input)[1]
 
         if faces is not None:
-            for index, face in enumerate(faces):
-                face_ori = fh.rescale2ori(face)
-                (x, y, w, h) = [int(v) for v in face_ori[:4]]
-                face_roi = img_ori[y:y+h, x:x+w]
-
-                if face_roi.size == 0:
-                    continue
-
-                preprocessed_face = preprocess_face(face_roi)
-                preds = detect_liveness(preprocessed_face)
+            face = fh.find_largest_face(faces)
+            face_ori = fh.rescale2ori(face)
+            (x, y, w, h) = [int(v) for v in face_ori[:4]]
+            face_roi = img_ori[y:y+h, x:x+w]
+            if face_roi.size == 0:
+                break
+            preprocessed_face = preprocess_face(face_roi)
+            preds = detect_liveness(preprocessed_face)
+            
+            real_score = preds[0][0]
+            
+            face_label = classify_face(real_score, threshold=0.5)
+            score_label = get_score_label(real_score)
+            
+            info_txt = f"{face_label}, {score_label}"
+            img_ori = fh.draw_one_face(img_ori, face_ori, real_score,info_txt)
                 
-                real_score = preds[0][0]  
-
-                face_label = classify_face(real_score, threshold=0.5)
-                score_label = get_score_label(real_score)
-
-                info_txt = f"Face {index}: {face_label}, {score_label}"
-                img_ori = fh.draw_one_face(img_ori, face_ori, real_score,info_txt)
+            if face_label == "Real":
+                real_count += 1
+            else:
+                fake_count += 1
                 
-                if face_label == "Real":
-                    real_count += 1
-                else:
-                    fake_count += 1
-        out.write(img_ori)
+        #out.write(img_ori)
         cv2.imshow(win_name, img_ori)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     stream.release()
-    out.release()
+    #out.release()
     cv2.destroyAllWindows()
     total_real_count.append(real_count)
     total_fake_count.append(fake_count)
     
 
-# dict = {"Videos" : [i for i in files],
-#         "real": [i for i in total_real_count],
-#         "fake":  [i for i in total_fake_count]
-#         }
-# df = pd.DataFrame(dict)
-# df_styled = df.style.background_gradient()
-# df_styled.set_caption(f"{model}")
-# dfi.export(df_styled, f'Drive Data Export /{model}.png')
+dict = {"Videos" : [i for i in files],
+        "real": [i for i in total_real_count],
+        "fake":  [i for i in total_fake_count]
+        }
+df = pd.DataFrame(dict)
+df_styled = df.style.background_gradient()
+df_styled.set_caption(f"{model}")
+dfi.export(df_styled, f'Drive Data Export/{model}.png')
